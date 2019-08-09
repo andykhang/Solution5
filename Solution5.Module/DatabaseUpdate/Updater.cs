@@ -11,6 +11,8 @@ using DevExpress.Xpo;
 using DevExpress.ExpressApp.Xpo;
 using DevExpress.Persistent.BaseImpl;
 using DevExpress.Persistent.BaseImpl.PermissionPolicy;
+using Solution5.Module.BusinessObjects;
+
 
 namespace Solution5.Module.DatabaseUpdate {
     // For more typical usage scenarios, be sure to check out https://documentation.devexpress.com/eXpressAppFramework/clsDevExpressExpressAppUpdatingModuleUpdatertopic.aspx
@@ -26,6 +28,20 @@ namespace Solution5.Module.DatabaseUpdate {
             //    theObject = ObjectSpace.CreateObject<DomainObject1>();
             //    theObject.Name = name;
             //}
+
+            Contact contactMary = ObjectSpace.FindObject<Contact>(
+            CriteriaOperator.Parse("FirstName == 'Mary' && LastName == 'Tellitson'"));
+            if (contactMary == null)
+            {
+                contactMary = ObjectSpace.CreateObject<Contact>();
+                contactMary.FirstName = "Mary";
+                contactMary.LastName = "Tellitson";
+                contactMary.Email = "tellitson@example.com";
+                contactMary.Birthday = new DateTime(1980, 11, 27);
+            }
+            
+            
+
             PermissionPolicyUser sampleUser = ObjectSpace.FindObject<PermissionPolicyUser>(new BinaryOperator("UserName", "User"));
             if(sampleUser == null) {
                 sampleUser = ObjectSpace.CreateObject<PermissionPolicyUser>();
@@ -50,7 +66,52 @@ namespace Solution5.Module.DatabaseUpdate {
             }
             adminRole.IsAdministrative = true;
 			userAdmin.Roles.Add(adminRole);
+            PermissionPolicyRole userRole = ObjectSpace.FindObject<PermissionPolicyRole>(new BinaryOperator("Name", "Users"));
+            if (userRole == null)
+            {
+                userRole = ObjectSpace.CreateObject<PermissionPolicyRole>();
+                userRole.Name = "Users";
+                userRole.PermissionPolicy = SecurityPermissionPolicy.AllowAllByDefault;
+                userRole.AddTypePermission<PermissionPolicyRole>(SecurityOperations.FullAccess,
+        SecurityPermissionState.Deny);
+                userRole.AddTypePermission<PermissionPolicyUser>(SecurityOperations.FullAccess,
+        SecurityPermissionState.Deny);
+                userRole.AddObjectPermission<PermissionPolicyUser>(SecurityOperations.ReadOnlyAccess,
+        "[Oid] = CurrentUserId()", SecurityPermissionState.Allow);
+                userRole.AddMemberPermission<PermissionPolicyUser>(SecurityOperations.Write,
+        "ChangePasswordOnFirstLogon", null, SecurityPermissionState.Allow);
+                userRole.AddMemberPermission<PermissionPolicyUser>(SecurityOperations.Write,
+        "StoredPassword", null, SecurityPermissionState.Allow);
+                userRole.AddTypePermission<PermissionPolicyRole>(SecurityOperations.Read, SecurityPermissionState.Allow);
+                userRole.AddTypePermission<PermissionPolicyTypePermissionObject>("Write;Delete;Navigate;Create", SecurityPermissionState.Deny);
+                userRole.AddTypePermission<PermissionPolicyMemberPermissionsObject>("Write;Delete;Navigate;Create",
+        SecurityPermissionState.Deny);
+                userRole.AddTypePermission<PermissionPolicyObjectPermissionsObject>("Write;Delete;Navigate;Create",
+        SecurityPermissionState.Deny);
+            }
+            PermissionPolicyUser user1 = ObjectSpace.FindObject<PermissionPolicyUser>(
+       new BinaryOperator("UserName", "Sam"));
+            if (user1 == null)
+            {
+                user1 = ObjectSpace.CreateObject<PermissionPolicyUser>();
+                user1.UserName = "Sam";
+                // Set a password if the standard authentication type is used. 
+                user1.SetPassword("");
+            }
+            // If a user named 'John' does not exist in the database, create this user. 
+            PermissionPolicyUser user2 = ObjectSpace.FindObject<PermissionPolicyUser>(
+                 new BinaryOperator("UserName", "John"));
+            if (user2 == null)
+            {
+                user2 = ObjectSpace.CreateObject<PermissionPolicyUser>();
+                user2.UserName = "John";
+                // Set a password if the standard authentication type is used. 
+                user2.SetPassword("");
+            }
+            user1.Roles.Add(adminRole);
+            user2.Roles.Add(userRole);
             ObjectSpace.CommitChanges(); //This line persists created object(s).
+
         }
         public override void UpdateDatabaseBeforeUpdateSchema() {
             base.UpdateDatabaseBeforeUpdateSchema();
